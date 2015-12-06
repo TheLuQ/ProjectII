@@ -1,5 +1,4 @@
 ﻿// Convolution.cpp : Defines the entry point for the console application.
-// do zrobienia ewentualnie - mnożenie i odczytywanie z możliwością jedno wymiarowej tablicy (1)
 
 #include "stdafx.h"
 #include <iostream>
@@ -14,8 +13,11 @@ typedef vector<int> Vec;
 typedef vector<Vec> Matrix;
 
 void readMat(Matrix mat);
-//void readVec(Vec vec);
-Matrix matMul( Matrix& a,  Matrix& b);
+void readMat(Vec mat);
+Vec matMul( Vec& a,  Matrix& b); //a może być tablicą JEDNOWYMIAROWĄ
+Matrix matMul(Matrix& a, Matrix& b); //w razie potrzeby mnożenia pełnych macierzy - chyba nie przyda się 
+int odlHamm(Vec& a, Vec& b);
+
 
 int main()
 {
@@ -47,6 +49,7 @@ int main()
 		{
 			bitsIn.push_back(rand() % 2);
 		}
+		
 	}
 	else {
 		bitsIn = { 1, 0, 1,0, 1,1,0,0,1,1,0,0,0,0 };
@@ -54,29 +57,32 @@ int main()
 		framesBits = bitsIn.capacity();
 	}
 
-
+	
 	//===================================================== >>> KODER<<< ==========================================
 	
 
-		coder = { { 1, 1, 1, 1, 1, 1 } ,{ 1, 0, 1, 1, 0, 1 },{ 0, 1, 1, 0, 1, 1 },{ 1, 0, 1, 1, 0, 1 } ,{ 1, 1, 1, 1, 1, 1 } };
 	
-	Matrix prev = { {0,0,0,0} };
+	coder = { { 1, 1, 1, 1, 1, 1 } ,{ 1, 0, 1, 1, 0, 1 },{ 0, 1, 1, 0, 1, 1 },{ 1, 0, 1, 1, 0, 1 } ,{ 1, 1, 1, 1, 1, 1 } };
+	
+	Vec prev =  {0,0,0,0};
+	cout << prev.size() << endl << endl;
 	for (int i = 0; i < bitsIn.size(); i++) {
-		Matrix wynik = matMul(prev, coder);  // (1)
-		bitsChannel.push_back(wynik[0]);//(1)
-		Vec::iterator it = prev[0].begin(); // pozycja iteratora
-		it = prev[0].insert(it, bitsIn[i]);
-		prev[0].pop_back();
+		bitsChannel.push_back(matMul(prev, coder));	
+		Vec::iterator it = prev.begin(); // pozycja iteratora
+		it = prev.insert(it, bitsIn[i]);
+		prev.pop_back();
 	}
+	
+	
 	
 	readMat(bitsChannel); // macierz z przesłanymi sekwencjami wyjsciowymi
 
-
+	
 
 
     return 0;
 }
-
+//===================================================== >>> FUNKCJE <<< ==========================================
 
 void readMat(Matrix mat) {		
 
@@ -88,20 +94,19 @@ void readMat(Matrix mat) {
 	}
 }
 
-/*
-void readVec(Vec vec) {
-
-	for (int i = 0; i < vec.size(); i++) {
-		cout << vec[i] << " ";
+void readMat(Vec mat) {
+	for (int i = 0; i < mat.size(); i++) {
+			cout << mat[i] << " ";
 	}
-	
+	cout << "\n";
 }
-*/
 
 
+Vec matMul(Vec& avec, Matrix& b) {  //(1)
 
-Matrix matMul(Matrix& a, Matrix& b) {  //(1)
-
+	Matrix a = { { 0 } };
+	a[0] = avec;
+	Vec cc;
 	int n = a.size();
 	int m = a[0].size();
 	int p = b[0].size();
@@ -118,5 +123,41 @@ Matrix matMul(Matrix& a, Matrix& b) {  //(1)
 			c[i][j] = suma%2;
 		}
 	}
+	cc = c[0];
+	return cc;
+}
+
+Matrix matMul(Matrix& a, Matrix& b) {  //(1)
+
+	int n = a.size();
+	int m = a[0].size();
+	int p = b[0].size();
+	int suma = 0;
+	Matrix c(n, vector<int>(p));
+
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < p; ++j) {
+
+			suma = 0;
+			for (int k = 0; k < m; ++k) {
+				suma = suma + a[i][k] * b[k][j];
+			}
+			c[i][j] = suma % 2;
+		}
+	}
 	return c;
+}
+
+int odlHamm(Vec& a, Vec& b) {
+	int odl = 0;
+	if (a.size() != b.size())
+		cout << "error\n";
+	else {
+		for (int i = 0; i < a.size(); i++) {
+			if (a[i] != b[i])
+				odl++;
+		}
+	}
+	return odl;
+
 }
