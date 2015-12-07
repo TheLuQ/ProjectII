@@ -69,12 +69,11 @@ int main()
 	coder = { { 1, 1, 1, 1, 1, 1 } ,{ 1, 0, 1, 1, 0, 1 },{ 0, 1, 1, 0, 1, 1 },{ 1, 0, 1, 1, 0, 1 } ,{ 1, 1, 1, 1, 1, 1 } };
 	
 	Vec prev =  {0,0,0,0};
-	cout << prev.size() << endl << endl;
 	for (int i = 0; i < bitsIn.size(); i++) {
-		bitsChannel.push_back(matMul(prev, coder));	
 		Vec::iterator it = prev.begin(); // pozycja iteratora
 		it = prev.insert(it, bitsIn[i]);
 		prev.pop_back();
+		bitsChannel.push_back(seqOut(prev, coder));
 	}
 	
 	
@@ -92,7 +91,7 @@ int main()
 	int ii = 0; // do pathes uzupelnianie
 
 
-	Matrix tempBitsChannel(2 * maxRej, Vec(6));
+	Matrix tempBitsChannel(2 * bitsChannel.size(), Vec(6));			//TYMCZASOWO
 
 	for (int i = 0; i < maxRej; i++) {
 		Vec temp2(nrRej, 0); 
@@ -102,29 +101,27 @@ int main()
 			copy(temp.begin(), temp.end(), temp2.begin()+ nrRej - temp.size());	
 		}
 		copy(temp2.begin(), temp2.end(), pathes[ii].begin());
-		//tempBitsChannel[ii] = bitsChannel[i];
+		if (i<14)
+			tempBitsChannel[ii] = bitsChannel[i];								//TYMCZASOWO
 		ii++;
 		copy(temp2.begin(), temp2.end(), pathes[ii].begin());
-		//tempBitsChannel[ii] = bitsChannel[i];			// NIE DZIALA
+		if (i<14)
+			tempBitsChannel[ii] = bitsChannel[i];						//TYMCZASOWO
 		ii++;
 	}
-	readMat(pathes);
+
 	// @@@ wstepne uzupelnianie tablicy pathes zakonczone
-	
-	for (int i = 0; i < 2*maxRej; i++) {
-		readMat(pathes[i]);
-		for (int j = 0; j < nrRej; j++) {
-			addAndMove(pathes[i][j], prevState); // RACZEJ DZIALA
 
-			//hamm[i] += odlHamm(seqOut(prevState, coder), tempBitsChannel[i]);
-			//seqOut(prevState, coder);
-			prevState.pop_back();
+
+		for (int i = 0; i < 2 * maxRej; i++) {
+			for (int j = 0; j < nrRej; j++) {
+				addAndMove(pathes[i][j], prevState); 
+				hamm[i] += odlHamm(seqOut(prevState, coder), bitsChannel[j]);
+				prevState.pop_back();
+			}
+			prevState = Vec(4, 0);
+
 		}
-		cout << "\n\n\n";
-		prevState = Vec(4, 0);
-
-	}
-
 	readMat(hamm);
 
     return 0;
@@ -228,6 +225,7 @@ int VecToInt(Vec binNumb) {
 		suma += binNumb[i] * pow(2, binNumb.size() - 1  - i);
 	}
 	return suma;
+
 }
 
 /*
