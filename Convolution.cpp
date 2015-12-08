@@ -86,43 +86,65 @@ int main()
 	int nrRej = 4;
 	int maxRej = 16;
 	Vec prevState(4, 0);
-	Matrix pathes(2* maxRej, Vec(framesBits)); // 4 rejestry 2^4
+	Matrix tempPathes(2* maxRej, Vec(framesBits)); // 4 rejestry 2^4 // tymczasowe wszyskie scieżki
+	Matrix pathes(maxRej, Vec(framesBits));		// wszystkie ocalone ścieżki
+	Vec survInx(maxRej,0);		// ocalałe indexy ścieżek o najmniejszym hammingu
 	Vec hamm(2 * maxRej,0);
 	int ii = 0; // do pathes uzupelnianie
 
-
-	Matrix tempBitsChannel(2 * bitsChannel.size(), Vec(6));			//TYMCZASOWO
-
-	for (int i = 0; i < maxRej; i++) {
+	for (int i = 0; i < maxRej; i++) { // pierwsze uzupelnienie pathes
 		Vec temp2(nrRej, 0); 
 		Vec temp = intToVec(i);
 		if (temp.size() < maxRej) {
 			Vec fillUp(nrRej - temp.size(), 0);
 			copy(temp.begin(), temp.end(), temp2.begin()+ nrRej - temp.size());	
 		}
-		copy(temp2.begin(), temp2.end(), pathes[ii].begin());
-		if (i<14)
-			tempBitsChannel[ii] = bitsChannel[i];								//TYMCZASOWO
+		copy(temp2.begin(), temp2.end(), pathes[i].begin());
+	}
+	
+	ii = 0;
+	for (int i = 0; i < maxRej; i++) { //  uzupelnienie tablicy tempPathes
+
+		copy(pathes[i].begin(), pathes[i].begin() + nrRej, tempPathes[ii].begin());
 		ii++;
-		copy(temp2.begin(), temp2.end(), pathes[ii].begin());
-		if (i<14)
-			tempBitsChannel[ii] = bitsChannel[i];						//TYMCZASOWO
+		copy(pathes[i].begin(), pathes[i].begin() + nrRej, tempPathes[ii].begin());
 		ii++;
 	}
 
-	// @@@ wstepne uzupelnianie tablicy pathes zakonczone
+	for (int i = 0; i < 2 * maxRej; i++) { // i-ta ścieżka
+		for (int j = 0; j < nrRej; j++) {// j -ty bit ścieżki możliwej // dla późniejszych należy zwiększyć
+			addAndMove(tempPathes[i][j], prevState);
+			hamm[i] += odlHamm(seqOut(prevState, coder), bitsChannel[j]);
+			prevState.pop_back();
+		}
+		prevState = Vec(4, 0);
+	}
+	readMat(hamm);
 
 
-		for (int i = 0; i < 2 * maxRej; i++) {
-			for (int j = 0; j < nrRej; j++) {
-				addAndMove(pathes[i][j], prevState); 
-				hamm[i] += odlHamm(seqOut(prevState, coder), bitsChannel[j]);
-				prevState.pop_back();
-			}
-			prevState = Vec(4, 0);
+	for (int b = nrRej; b < framesBits - 1; b++) { //b-ty bit wejscia
+
+		ii = 0;
+		for (int i = 0; i < maxRej; i++) { //  uzupelnienie tablicy tempPathes z ocalalych scieżek pathes
+
+			copy(pathes[i].begin(), pathes[i].begin() + b, tempPathes[ii].begin());
+			tempPathes[ii][b] = ii % 2;
+			ii++;
+			copy(pathes[i].begin(), pathes[i].begin() + b, tempPathes[ii].begin());
+			tempPathes[ii][b] = ii % 2;
+			ii++;
+		}
+
+		for (int j = 0; j < 2*maxRej; j++) { // j-ta ścieżka
+			vector<int> prevState;
+			prevState.assign(tempPathes[j].begin() + b - nrRej, tempPathes[j].begin() + b + 1);
+			reverse(prevState.begin(), prevState.end());
+			hamm[j] += odlHamm(seqOut(prevState, coder), bitsChannel[b]);
 
 		}
-	readMat(hamm);
+
+
+	}
 
     return 0;
 }
