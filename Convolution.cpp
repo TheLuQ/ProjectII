@@ -39,6 +39,7 @@ int main()
 	Vec bitsIn;
 	Matrix bitsChannel;
 	Matrix coder(5, Vec(6));
+	float progress = 0.0;
 
 	bool menu = false;
 	if (menu == true){
@@ -106,6 +107,7 @@ int main()
 	Vec survInx(maxRej,0);		// ocalałe indexy ścieżek o najmniejszym hammingu
 	Vec hamm(2 * maxRej,0);
 	Vec savedHamm(maxRej, 0);
+	bool flag = false;
 	int ii = 0; // do pathes uzupelnianie
 
 	pathes = Matrix(maxRej, Vec(framesBits, 0));
@@ -165,7 +167,7 @@ int main()
 
 		survInx = Vec(maxRej, 0);
 
-		for (int j = 0; j < 2*maxRej; j++) { // j-ta ścieżka
+		for (int j = 0; j < 2 * maxRej; j++) { // j-ta ścieżka
 			vector<int> prevState;
 			prevState.assign(tempPathes[j].begin() + b - nrRej, tempPathes[j].begin() + b + 1);
 			reverse(prevState.begin(), prevState.end());
@@ -184,7 +186,7 @@ int main()
 
 			if (hamm[j] == 0)
 				findDuplHamm[lastState[j]] = -1;	//żeby algorytm nie mógł nadpisać nad nią jakiejś ścieżki - związane z (*)
-			
+
 			//cout << hamm[j] << endl;
 			//readMat(findDuplHamm); // dobre sprawdzanie !!!
 
@@ -197,16 +199,41 @@ int main()
 		}
 
 		for (int i = 0; i < maxRej; i++) {
-			copy(tempPathes[survInx[i]].begin(), tempPathes[survInx[i]].begin() + b + 2, pathes[i].begin()); 
+			copy(tempPathes[survInx[i]].begin(), tempPathes[survInx[i]].begin() + b + 2, pathes[i].begin());
 			savedHamm[i] = hamm[survInx[i]];
 		}
 
 		findDuplHamm = Vec(maxRej, 0);
-		cout << b << endl;
+
+
+
+		int barWidth = 70;
+		float step = 20;
+		if (b % (int)round(framesBits / step) == 0 || flag == true) {
+			std::cout << "8";
+			int pos = barWidth * progress;
+			for (int i = 0; i < barWidth; ++i) {
+				if (i < pos) std::cout << "=";
+				else if (i == pos) std::cout << "D";
+				else std::cout << " ";
+			}
+			cout << "] " << int(progress * 100.0) << " %\r";
+			cout.flush();
+			progress += 1/step; 
+			if (flag == true) {
+				cout << endl;
+			}
+		}
+		else if (b == framesBits - 3){
+			progress = 1;
+			flag = true;
+		}
 	}
 	
 	//readMat(tempPathes[min_element(hamm.begin(), hamm.end()) - hamm.begin()]);
-	cout << " TO JEST TO: " << odlHamm(tempPathes[min_element(hamm.begin(), hamm.end()) - hamm.begin()], bitsIn) << endl;
+
+	cout << "Loading complete\n";
+	cout << "errors : " << odlHamm(tempPathes[min_element(hamm.begin(), hamm.end()) - hamm.begin()], bitsIn) << endl;
     return 0;
 }
 //===================================================== >>> FUNKCJE <<< ==========================================
