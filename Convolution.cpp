@@ -4,8 +4,9 @@
 #include <iostream>
 #include <vector>
 #include <ctime>
+#include <algorithm>
 
-
+#define PI 3.141592654
 
 using namespace std;
 
@@ -22,6 +23,9 @@ int VecToInt(Vec binNumb);
 Vec seqOut(Vec prevState, Matrix coder);
 Vec addAndMove(int bitIn, Vec& prevState);
 int stateToInt(Vec State); // zwraca numer następnego stanu
+Matrix result(vector<vector<float>> bitSoft);
+vector< vector<float> > kanal(float es_n0, Matrix bitsInput);
+float gauss(float mean, float sigma);
 
 
 int main()
@@ -38,9 +42,7 @@ int main()
 
 	bool menu = false;
 	if (menu == true){
-		cout << "Podaj dane:\nLiczba ramek: \n";
-		cin >> frames; // calkowita liczba bitow > 10e5
-		cout << "Liczba bitow w ramce: \n";
+		cout << "Liczba bitow: \n";
 		cin >> framesBits; //100, 500, 1000
 		cout << "EbN0 max: \n";
 		cin >> EbN0max;
@@ -50,16 +52,22 @@ int main()
 		cin >> EbN0step;
 		cout << "\n\n\n";
 
+		bitsIn = Vec(framesBits, 0);
 		for (int i = 0; i < framesBits; i++) // generowanie bitow 
 		{
-			bitsIn.push_back(rand() % 2);
+			bitsIn[i] = rand() % 2;
 		}
-		
 	}
 	else {
-		bitsIn = { 1, 0, 1,0, 1,1,0,0,1,1,0,0,0,1,0 };
-		frames = 1;
+		bitsIn = Vec(500, 0);
+		for (int i = 0; i < bitsIn.size(); i++) // generowanie bitow 
+		{
+			bitsIn[i] = rand() % 2;
+			if (i > 25)
+				bitsIn[i] = 0;
+		}
 		framesBits = bitsIn.capacity();
+		//readMat(bitsIn);
 	}
 
 	
@@ -78,10 +86,16 @@ int main()
 	}
 	
 	//readMat(bitsChannel); // macierz z przesłanymi sekwencjami wyjsciowymi
+	cout << endl;
+	//readMat(result(kanal(15,bitsChannel)));
+
+	bitsChannel = result(kanal(-15, bitsChannel));
 
 
 
 //===================================================== >>> DEKODER<<< ==========================================
+
+
 	int nrRej = 4;
 	int maxRej = 16;
 	Vec prevState(4, 0);
@@ -93,6 +107,10 @@ int main()
 	Vec hamm(2 * maxRej,0);
 	Vec savedHamm(maxRej, 0);
 	int ii = 0; // do pathes uzupelnianie
+
+	pathes = Matrix(maxRej, Vec(framesBits, 0));
+	tempPathes = Matrix(2 * maxRej, Vec(framesBits,0));
+
 
 	for (int i = 0; i < maxRej; i++) { // pierwsze uzupelnienie pathes
 		Vec temp2(nrRej, 0); 
@@ -125,7 +143,6 @@ int main()
 	
 	for (int i = 0; i < 2*maxRej; i=i+2)
 		savedHamm[i/2] = hamm[i];
-	readMat(hamm);
 
 
 
@@ -155,9 +172,8 @@ int main()
 			hamm[j] += odlHamm(seqOut(prevState, coder), bitsChannel[b]);
 			lastState[j] = stateToInt(prevState);
 
-			cout << lastState[j] << endl;
 
-			if (findDuplHamm[lastState[j]] == 0) {
+			if (findDuplHamm[lastState[j]] == 0) { //(*)
 				findDuplHamm[lastState[j]] = hamm[j];
 				survInx[lastState[j]] = j;
 			}
@@ -167,7 +183,7 @@ int main()
 			}
 
 			if (hamm[j] == 0)
-				findDuplHamm[lastState[j]] = -1;	//żeby algorytm nie mógł nadpisać nad nią jakiejś ścieżki
+				findDuplHamm[lastState[j]] = -1;	//żeby algorytm nie mógł nadpisać nad nią jakiejś ścieżki - związane z (*)
 			
 			//cout << hamm[j] << endl;
 			//readMat(findDuplHamm); // dobre sprawdzanie !!!
@@ -180,20 +196,17 @@ int main()
 				findDuplHamm[i] == 0;
 		}
 
-		//prevState.assign(tempPathes[j].begin() + b - nrRej, tempPathes[j].begin() + b + 1);
-		//copy(pathes[i].begin(), pathes[i].begin() + b, tempPathes[ii].begin());
 		for (int i = 0; i < maxRej; i++) {
-			copy(tempPathes[survInx[i]].begin(), tempPathes[survInx[i]].begin() + b + 2, pathes[i].begin()); // CZY NA PEWNO + 1 ? // + 2 
+			copy(tempPathes[survInx[i]].begin(), tempPathes[survInx[i]].begin() + b + 2, pathes[i].begin()); 
 			savedHamm[i] = hamm[survInx[i]];
 		}
-		
-		readMat(savedHamm);
+
 		findDuplHamm = Vec(maxRej, 0);
-		cout << endl;
-		cout << endl;
+		cout << b << endl;
 	}
 	
-	readMat(pathes);
+	//readMat(tempPathes[min_element(hamm.begin(), hamm.end()) - hamm.begin()]);
+	cout << " TO JEST TO: " << odlHamm(tempPathes[min_element(hamm.begin(), hamm.end()) - hamm.begin()], bitsIn) << endl;
     return 0;
 }
 //===================================================== >>> FUNKCJE <<< ==========================================
@@ -315,4 +328,67 @@ int stateToInt(Vec State) {
 	State.pop_back();
 	return VecToInt(State);
 
+}
+
+Matrix result(vector<vector<float>>  bitSoft){
+	int a = bitSoft.size();
+	int b = bitSoft[0].size();
+	Matrix out(a, Vec(b));
+	for (int i = 0; i < bitSoft.size(); i++) {
+		for (int j = 0; j < bitSoft[0].size(); j++) {
+			//cout << bitSoft[i][j] << " ";
+			if (bitSoft[i][j] > 0)
+				out[i][j] = 1;
+			else
+				out[i][j] = 0;
+		}
+	}
+
+	return out;
+}
+
+vector< vector<float> > kanal(float es_n0, Matrix bitsInput)
+{
+	int a = bitsInput.size();
+	int b = bitsInput[0].size();
+	vector< vector<float> > bitsSoftOut(a, vector<float>(b));
+	float mean = 0;
+	float es = 1;
+	float sygnal;
+	float sigma;
+	float s_n;
+	long y;
+
+	s_n = (float)pow(10, (es_n0 / 10));
+	sigma = (float)sqrt(es / (2 * s_n));
+
+	for (int i = 0; i < bitsInput.size(); i++) {
+		for (int j = 0; j < bitsInput[0].size(); j++) {
+			//cout << i << " " << j << endl;
+			bitsSoftOut[i][j] = (float)bitsInput[i][j];
+			
+			sygnal = 2 * bitsInput[i][j] - 1; // zamiana z wart binarnej 0/1 na symbole -1/+1
+
+			bitsSoftOut[i][j] = sygnal + gauss(mean, sigma);  // dodanie szumu
+			//cout << bitsSoftOut[i][j] << endl;
+
+		}
+	}
+
+
+	return bitsSoftOut;
+}
+
+
+float gauss(float mean, float sigma)
+{
+	double x;
+	double z;
+	z = (double)rand() / RAND_MAX;
+	if (z == 1.0) z = 0.9999999;
+	x = sigma*sqrt(2.0*log(1.0 / (1.0 - z)));
+
+	z = (double)rand() / RAND_MAX;
+	if (z == 1.0) z = 0.9999999;
+	return((float)(mean + x*cos(2 * PI*z)));
 }
